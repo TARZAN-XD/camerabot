@@ -1,7 +1,7 @@
 module.exports = async ({ text, reply, sock, from, msg, sessionId }) => {
     if (!text.toLowerCase().startsWith('camera')) return;
 
-    const parts = text.trim().split(' ');
+    const parts = text.split(' ');
     if (parts.length < 2) {
         return reply('❌ أرسل الرابط بعد الأمر.\nمثال: camera https://example.com');
     }
