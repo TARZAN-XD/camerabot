@@ -2,39 +2,51 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <title>🔐 توليد رمز الاقتران</title>
+  <title>توليد رمز الاقتران / QR</title>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; background: #111; color: #fff; padding: 50px; }
-    input, button { padding: 10px; margin: 10px; border-radius: 5px; }
+    body { font-family: Arial; text-align: center; background: #111; color: #fff; padding: 50px; }
+    input, button { padding: 10px; margin: 10px; border-radius: 5px; font-size: 16px; }
     button { background: #38bdf8; color: #fff; border: none; cursor: pointer; }
     button:hover { background: #0ea5e9; }
     .code { font-size: 24px; color: #0f0; margin-top: 20px; }
   </style>
 </head>
 <body>
-  <h1>🔐 توليد رمز الاقتران</h1>
+  <h1>🔐 اختر الطريقة للربط</h1>
   <input type="text" id="sessionId" placeholder="معرف الجلسة">
   <input type="text" id="phone" placeholder="رقم الهاتف مع كود الدولة">
-  <button onclick="generateCode()">إنشاء الرمز</button>
+  <br>
+  <button onclick="generateCode()">إنشاء رمز الاقتران</button>
+  <button onclick="showQR()">عرض QR للربط</button>
   <div class="code" id="code"></div>
 
   <script>
     async function generateCode() {
       const sessionId = document.getElementById('sessionId').value.trim();
       const phone = document.getElementById('phone').value.trim();
-
-      if (!sessionId || !phone) {
-        alert('يرجى إدخال كل البيانات');
-        return;
-      }
+      if (!sessionId || !phone) return alert('أدخل معرف الجلسة ورقم الهاتف');
 
       const res = await fetch('/create-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, phone })
       });
-
       const data = await res.json();
+      if (data.pairingCode) {
+        document.getElementById('code').innerText = `✅ رمز الاقتران: ${data.pairingCode}`;
+      } else {
+        alert(data.error || data.message);
+      }
+    }
+
+    function showQR() {
+      const sessionId = document.getElementById('sessionId').value.trim();
+      if (!sessionId) return alert('أدخل معرف الجلسة');
+      window.location.href = `/generate-qr?sessionId=${encodeURIComponent(sessionId)}`;
+    }
+  </script>
+</body>
+</html>      const data = await res.json();
       if (data.pairingCode) {
         document.getElementById('code').innerText = `✅ رمز الاقتران: ${data.pairingCode}`;
       } else {
