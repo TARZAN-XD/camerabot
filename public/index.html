@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <title>توليد رمز الاقتران - طرزان الواقدي</title>
+  <meta charset="UTF-8">
+  <title>🔐 توليد رمز الاقتران</title>
   <style>
     body { font-family: Arial, sans-serif; text-align: center; background: #111; color: #fff; padding: 50px; }
     input, button { padding: 10px; margin: 10px; border-radius: 5px; }
@@ -13,8 +13,8 @@
 </head>
 <body>
   <h1>🔐 توليد رمز الاقتران</h1>
-  <input type="text" id="sessionId" placeholder="معرف الجلسة" />
-  <input type="text" id="phone" placeholder="رقم الهاتف مع كود الدولة" />
+  <input type="text" id="sessionId" placeholder="معرف الجلسة">
+  <input type="text" id="phone" placeholder="رقم الهاتف مع كود الدولة">
   <button onclick="generateCode()">إنشاء الرمز</button>
   <div class="code" id="code"></div>
 
@@ -24,7 +24,7 @@
       const phone = document.getElementById('phone').value.trim();
 
       if (!sessionId || !phone) {
-        alert('يرجى ملء جميع الحقول');
+        alert('يرجى إدخال كل البيانات');
         return;
       }
 
@@ -35,6 +35,15 @@
       });
 
       const data = await res.json();
+      if (data.pairingCode) {
+        document.getElementById('code').innerText = `✅ رمز الاقتران: ${data.pairingCode}`;
+      } else {
+        alert(data.error || data.message);
+      }
+    }
+  </script>
+</body>
+</html>      const data = await res.json();
       if (data.pairingCode) {
         document.getElementById('code').innerText = `✅ رمز الاقتران: ${data.pairingCode}`;
       } else {
