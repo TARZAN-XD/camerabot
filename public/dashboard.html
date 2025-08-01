@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <title>لوحة تحكم جلسات واتساب</title>
+  <style>
+    body {
+      font-family: 'Tajawal', sans-serif;
+      background: #111;
+      color: #eee;
+      margin: 0;
+      padding: 20px;
+      direction: rtl;
+    }
+    h1 {
+      color: #38bdf8;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    #newSessionForm {
+      max-width: 400px;
+      margin: 0 auto 30px auto;
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+    #newSessionForm input {
+      flex: 1;
+      padding: 10px;
+      border-radius: 6px;
+      border: none;
+      outline: none;
+      background: #222;
+      color: #eee;
+      font-size: 16px;
+    }
+    #newSessionForm button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      background: #38bdf8;
+      color: #111;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    #newSessionForm button:hover {
+      background: #0ea5e9;
+    }
+    table {
+      width: 90%;
+      max-width: 800px;
+      margin: 0 auto;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 12px 15px;
+      border: 1px solid #333;
+      text-align: center;
+    }
+    th {
+      background: #222;
+      color: #38bdf8;
+    }
+    td {
+      background: #1a1a1a;
+    }
+    button.action-btn {
+      background: #38bdf8;
+      border: none;
+      color: #111;
+      padding: 6px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.3s;
+      font-weight: bold;
+    }
+    button.action-btn:hover {
+      background: #0ea5e9;
+    }
+    #message {
+      max-width: 400px;
+      margin: 20px auto;
+      text-align: center;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <h1>لوحة تحكم جلسات واتساب</h1>
+
+  <form id="newSessionForm">
+    <input type="text" id="sessionIdInput" placeholder="أدخل اسم الجلسة" required />
+    <button type="submit">إنشاء جلسة جديدة</button>
+  </form>
+
+  <div id="message"></div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>اسم الجلسة</th>
+        <th>عرض QR</th>
+        <th>طلب رمز الاقتران</th>
+        <th>حذف الجلسة</th>
+      </tr>
+    </thead>
+    <tbody id="sessionsTableBody"></tbody>
+  </table>
+
+  <script>
+    const sessionsTableBody = document.getElementById('sessionsTableBody');
+    const newSessionForm = document.getElementById('newSessionForm');
+    const sessionIdInput = document.getElementById('sessionIdInput');
+    const messageDiv = document.getElementById('message');
+
+    async function fetchSessions() {
+      const res = await fetch('/sessions');
+      const data = await res.json();
+      return data.activeSessions || [];
+    }
+
+    async function renderSessions() {
+      const sessions = await fetchSessions();
+      sessionsTableBody.innerHTML = '';
+
+      if (sessions.length === 0) {
+        sessionsTableBody.innerHTML = `<tr><td colspan="4">لا توجد جلسات حالياً</td></tr>`;
+        return;
+      }
+
+      for (const sessionId of sessions) {
+        const tr = document.createElement('tr');
+
+        tr.innerHTML = `
+          <td>${sessionId}</td>
+          <td><button class="action-btn" onclick="showQR('${sessionId}')">عرض QR</button></td>
+          <td><button class="action-btn" onclick="promptPairingCode('${sessionId}')">طلب رمز الاقتران</button></td>
+          <td><button class="action-btn" onclick="deleteSession('${sessionId}')">حذف</button></td>
+        `;
+
+        sessionsTableBody.appendChild(tr);
+      }
+    }
+
+    function showMessage(msg, color = '#0f0') {
+      messageDiv.style.color = color;
+      messageDiv.textContent = msg;
+      setTimeout(() => { messageDiv.textContent = ''; }, 4000);
+    }
+
+    async function showQR(sessionId) {
+      window.open(`/qr-page?sessionId=${encodeURIComponent(sessionId)}`, '_blank');
+    }
+
+    async function promptPairingCode(sessionId) {
+      const number = prompt('أدخل رقم الهاتف مع كود الدولة (مثلاً 9665xxxxxxx):');
+      if (!number) return;
+
+      try {
+        const res = await fetch('/pair', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId, number })
+        });
+        const data = await res.json();
+
+        if (data.pairingCode) {
+          alert(`رمز الاقتران:\n${data.pairingCode}`);
+        } else {
+          alert('خطأ: ' + (data.error || 'فشل في طلب رمز الاقتران'));
+        }
+      } catch (err) {
+        alert('حدث خطأ أثناء الطلب');
+      }
+    }
+
+    async function deleteSession(sessionId) {
+      if (!confirm(`هل أنت متأكد من حذف الجلسة: ${sessionId} ؟`)) return;
+
+      try {
+        const res = await fetch('/delete-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId })
+        });
+        const data = await res.json();
+
+        if (data.message) {
+          showMessage(data.message, '#0f0');
+          renderSessions();
+        } else {
+          showMessage('فشل في حذف الجلسة', 'red');
+        }
+      } catch {
+        showMessage('حدث خطأ أثناء حذف الجلسة', 'red');
+      }
+    }
+
+    newSessionForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const sessionId = sessionIdInput.value.trim();
+      if (!sessionId) return;
+
+      try {
+        const res = await fetch('/create-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId })
+        });
+        const data = await res.json();
+
+        if (data.message) {
+          showMessage(data.message);
+          sessionIdInput.value = '';
+          renderSessions();
+        } else if (data.error) {
+          showMessage(data.error, 'red');
+        }
+      } catch {
+        showMessage('خطأ في إنشاء الجلسة', 'red');
+      }
+    });
+
+    renderSessions();
+  </script>
+</body>
+  </html>
