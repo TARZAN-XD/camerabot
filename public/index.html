@@ -2,18 +2,103 @@
 <html lang="ar">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>لوحة اختبار واتساب</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+<style>
+    body {
+        font-family: 'Cairo', sans-serif;
+        background: linear-gradient(135deg, #0d0d0d, #1c1c1c);
+        color: #fff;
+        text-align: center;
+        margin: 0;
+        padding: 0;
+    }
+    header {
+        background: #111;
+        padding: 20px;
+        font-size: 28px;
+        font-weight: bold;
+        color: #00ff99;
+        letter-spacing: 1px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+    .container {
+        max-width: 500px;
+        margin: 40px auto;
+        background: #181818;
+        padding: 30px;
+        border-radius: 15px;
+        box-shadow: 0 4px 25px rgba(0,0,0,0.6);
+    }
+    h1 {
+        font-size: 24px;
+        margin-bottom: 15px;
+        color: #00ff99;
+    }
+    #qr {
+        font-size: 18px;
+        padding: 15px;
+        background: #222;
+        border: 2px dashed #00ff99;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        color: #ccc;
+    }
+    input {
+        width: 90%;
+        padding: 12px;
+        margin-bottom: 20px;
+        font-size: 18px;
+        border: none;
+        border-radius: 8px;
+        background: #2a2a2a;
+        color: #fff;
+        outline: none;
+    }
+    .btn-group {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+    }
+    button {
+        flex: 1;
+        padding: 14px;
+        font-size: 18px;
+        font-weight: bold;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        background: #00ff99;
+        color: #000;
+        transition: 0.3s;
+    }
+    button:hover {
+        background: #00cc7a;
+    }
+    #status {
+        margin-top: 20px;
+        font-size: 18px;
+        color: #fff;
+        min-height: 24px;
+    }
+</style>
 </head>
 <body>
-<h1>اختبارات واتساب</h1>
-<p>امسح رمز QR من هنا:</p>
-<div id="qr">جاري تحميل QR...</div>
-<hr>
-<input type="text" id="number" placeholder="رقم واتساب (9665xxxxxxx)" />
-<button onclick="sendCommand('bug')">BUG</button>
-<button onclick="sendCommand('crash')">CRASH</button>
-<button onclick="sendCommand('protocol1')">PROTOCOL</button>
-<p id="status"></p>
+<header>لوحة اختبار واتساب</header>
+<div class="container">
+    <h1>اختبارات واتساب</h1>
+    <p>امسح رمز QR من هنا:</p>
+    <div id="qr">جاري تحميل QR...</div>
+    <hr style="border-color:#333;">
+    <input type="text" id="number" placeholder="رقم واتساب (9665xxxxxxx)" />
+    <div class="btn-group">
+        <button onclick="sendCommand('bug')">BUG</button>
+        <button onclick="sendCommand('crash')">CRASH</button>
+        <button onclick="sendCommand('protocol1')">PROTOCOL</button>
+    </div>
+    <p id="status"></p>
+</div>
 
 <script>
 async function loadQR() {
