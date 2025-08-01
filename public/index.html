@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<title>لوحة اختبار واتساب</title>
+</head>
+<body>
+<h1>اختبارات واتساب</h1>
+<p>امسح رمز QR من هنا:</p>
+<div id="qr">جاري تحميل QR...</div>
+<hr>
+<input type="text" id="number" placeholder="رقم واتساب (9665xxxxxxx)" />
+<button onclick="sendCommand('bug')">BUG</button>
+<button onclick="sendCommand('crash')">CRASH</button>
+<button onclick="sendCommand('protocol1')">PROTOCOL</button>
+<p id="status"></p>
+
+<script>
+async function loadQR() {
+    const qrDiv = document.getElementById('qr');
+    const res = await fetch('/qr');
+    qrDiv.innerHTML = res.ok ? await res.text() : 'لا يوجد QR حالياً';
+}
+loadQR();
+setInterval(loadQR, 5000);
+
+async function sendCommand(cmd) {
+    const number = document.getElementById('number').value.trim();
+    if (!number) { alert('أدخل الرقم'); return; }
+    const status = document.getElementById('status');
+    status.textContent = 'جارٍ الإرسال...';
+    const res = await fetch(`/send-${cmd}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ number })
+    });
+    status.textContent = await res.text();
+}
+</script>
+</body>
+</html>
