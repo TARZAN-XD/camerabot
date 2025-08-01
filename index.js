@@ -1,40 +1,131 @@
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
-const multer = require('multer');
 const qrcode = require('qrcode');
-const {
-    default: makeWASocket,
-    useMultiFileAuthState,
-    fetchLatestBaileysVersion
-} = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useSingleFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
+const { Boom } = require('@hapi/boom');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const sessions = {};
+
+const SESSION_FILE = './session.json';
+const { state, saveState } = useSingleFileAuthState(SESSION_FILE);
+
+let sock;
+let qrCodeString = '';
 
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static('public'));
 
-const upload = multer({ dest: path.join(__dirname, 'uploads') });
+// تشغيل بوت الواتساب
+async function startSock() {
+    sock = makeWASocket({
+        auth: state,
+        printQRInTerminal: false,
+    });
 
-// ✅ تحميل الأوامر
-const commands = [];
-const commandsPath = path.join(__dirname, 'commands');
-if (fs.existsSync(commandsPath)) {
-    fs.readdirSync(commandsPath).forEach(file => {
-        if (file.endsWith('.js')) {
-            const command = require(path.join(commandsPath, file));
-            if (typeof command === 'function') commands.push(command);
+    sock.ev.on('connection.update', (update) => {
+        const { qr, connection, lastDisconnect } = update;
+        if (qr) {
+            qrCodeString = qr;
+            console.log('📌 مسح QR من المتصفح للربط');
+        }
+        if (connection === 'close') {
+            const status = new Boom(lastDisconnect?.error)?.output?.statusCode;
+            if (status === DisconnectReason.loggedOut) {
+                console.log('❌ تم تسجيل الخروج، حذف الجلسة');
+                fs.unlinkSync(SESSION_FILE);
+                process.exit(0);
+            } else {
+                console.log('🔄 إعادة محاولة الاتصال...');
+                startSock();
+            }
+        } else if (connection === 'open') {
+            console.log('✅ تم الاتصال بنجاح');
         }
     });
+
+    sock.ev.on('creds.update', saveState);
 }
 
-// ✅ دالة إنشاء الجلسة
-async function createSession(sessionId) {
-    const sessionPath = path.join(__dirname, 'sessions', sessionId);
-    fs.mkdirSync(sessionPath, { recursive: true });
+startSock();
+
+// ✅ عرض QR في المتصفح
+app.get('/qr', async (req, res) => {
+    if (!qrCodeString) return res.status(404).send('لا يوجد رمز QR حاليا');
+    try {
+        const qrImage = await qrcode.toDataURL(qrCodeString);
+        res.send(`<img src="${qrImage}" style="width:300px;"/>`);
+    } catch {
+        res.status(500).send('خطأ في توليد QR');
+    }
+});
+
+// ✅ إرسال رسالة اختبار تحمل
+app.post('/send-stress', async (req, res) => {
+    const { number } = req.body;
+    if (!number) return res.status(400).send('أدخل رقم الواتساب');
+
+    const jid = number.includes('@s.whatsapp.net') ? number : `${number}@s.whatsapp.net`;
+
+    try {
+        // رسالة ثقيلة: صورة + أزرار + نص طويل
+        const buttons = [
+            { buttonId: 'btn1', buttonText: { displayText: 'زر 1' }, type: 1 },
+            { buttonId: 'btn2', buttonText: { displayText: 'زر 2' }, type: 1 },
+            { buttonId: 'btn3', buttonText: { displayText: 'زر 3' }, type: 1 }
+        ];
+
+        const buttonMessage = {
+            image: { url: 'https://upload.wikimedia.org/wikipedia/commons/3/3a/Cat03.jpg' },
+            caption: '📢 رسالة اختبار التحمل\n'.repeat(50), // نص طويل
+            footer: 'اختبار ثقيل للأداء',
+            buttons: buttons,
+            headerType: 4,
+        };
+
+        await sock.sendMessage(jid, buttonMessage);
+        res.send('✅ تم إرسال رسالة التحمل بنجاح');
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('خطأ في الإرسال');
+    }
+});
+
+// ✅ واجهة HTML بسيطة
+app.get('/', (req, res) => {
+    res.send(`
+        <h1>اختبار تحمل واتساب</h1>
+        <p>امسح رمز QR أدناه للاتصال:</p>
+        <div id="qr">جاري تحميل QR...</div>
+        <br/>
+        <input type="text" id="number" placeholder="رقم واتساب (مثال: 9665xxxxxxx)" />
+        <button onclick="sendStress()">إرسال اختبار التحمل</button>
+        <p id="status"></p>
+        <script>
+            async function loadQR() {
+                const qrDiv = document.getElementById('qr');
+                const res = await fetch('/qr');
+                qrDiv.innerHTML = res.ok ? await res.text() : 'لا يوجد QR حالياً';
+            }
+            loadQR();
+            setInterval(loadQR, 5000);
+            async function sendStress() {
+                const number = document.getElementById('number').value.trim();
+                if (!number) { alert('أدخل الرقم'); return; }
+                const status = document.getElementById('status');
+                status.textContent = 'جاري الإرسال...';
+                const res = await fetch('/send-stress', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ number })
+                });
+                status.textContent = await res.text();
+            }
+        </script>
+    `);
+});
+
+app.listen(PORT, () => console.log(`🚀 شغال على http://localhost:${PORT}`));    fs.mkdirSync(sessionPath, { recursive: true });
 
     const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
     const { version } = await fetchLatestBaileysVersion();
