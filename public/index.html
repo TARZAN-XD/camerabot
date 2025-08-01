@@ -2,23 +2,129 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <title>توليد رمز الاقتران / QR</title>
+  <title>🔐 توليد رمز الاقتران / QR</title>
   <style>
-    body { font-family: Arial; text-align: center; background: #111; color: #fff; padding: 50px; }
-    input, button { padding: 10px; margin: 10px; border-radius: 5px; font-size: 16px; }
-    button { background: #38bdf8; color: #fff; border: none; cursor: pointer; }
-    button:hover { background: #0ea5e9; }
-    .code { font-size: 24px; color: #0f0; margin-top: 20px; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Cairo', sans-serif;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      color: #fff;
+      overflow: hidden;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 26px;
+      margin-bottom: 20px;
+      animation: fadeIn 2s ease-in-out infinite alternate;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0.6; }
+      to { opacity: 1; }
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 25px;
+      border-radius: 16px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+      width: 90%;
+      max-width: 400px;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 15px;
+      text-align: right;
+    }
+
+    input {
+      padding: 12px;
+      margin-top: 8px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      font-size: 16px;
+      outline: none;
+    }
+
+    input::placeholder {
+      color: #bbb;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 12px 18px;
+      background: #38bdf8;
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background: #0ea5e9;
+      transform: scale(1.05);
+    }
+
+    .code {
+      margin-top: 20px;
+      font-size: 22px;
+      font-weight: bold;
+      color: #0f0;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 12px;
+      border-radius: 10px;
+      display: inline-block;
+      min-width: 250px;
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 10px #0f0; }
+      100% { box-shadow: 0 0 25px #0f0; }
+    }
   </style>
 </head>
 <body>
   <h1>🔐 اختر الطريقة للربط</h1>
-  <input type="text" id="sessionId" placeholder="معرف الجلسة">
-  <input type="text" id="phone" placeholder="رقم الهاتف مع كود الدولة">
-  <br>
-  <button onclick="generateCode()">إنشاء رمز الاقتران</button>
-  <button onclick="showQR()">عرض QR للربط</button>
-  <div class="code" id="code"></div>
+  <div class="card">
+    <div class="input-group">
+      <label for="sessionId">معرف الجلسة:</label>
+      <input type="text" id="sessionId" placeholder="أدخل معرف الجلسة">
+    </div>
+    <div class="input-group">
+      <label for="phone">رقم الهاتف مع كود الدولة:</label>
+      <input type="text" id="phone" placeholder="مثال: 9665xxxxxxxx">
+    </div>
+    <div class="btn-group">
+      <button onclick="generateCode()">إنشاء رمز الاقتران</button>
+      <button onclick="showQR()">عرض QR للربط</button>
+    </div>
+    <div class="code" id="code" style="display:none;"></div>
+  </div>
 
   <script>
     async function generateCode() {
@@ -32,9 +138,24 @@
         body: JSON.stringify({ sessionId, phone })
       });
       const data = await res.json();
+
+      const codeDiv = document.getElementById('code');
       if (data.pairingCode) {
-        document.getElementById('code').innerText = `✅ رمز الاقتران: ${data.pairingCode}`;
+        codeDiv.style.display = 'block';
+        codeDiv.innerText = `✅ رمز الاقتران: ${data.pairingCode}`;
       } else {
+        alert(data.error || data.message);
+      }
+    }
+
+    function showQR() {
+      const sessionId = document.getElementById('sessionId').value.trim();
+      if (!sessionId) return alert('أدخل معرف الجلسة');
+      window.location.href = `/generate-qr?sessionId=${encodeURIComponent(sessionId)}`;
+    }
+  </script>
+</body>
+</html>      } else {
         alert(data.error || data.message);
       }
     }
