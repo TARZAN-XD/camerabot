@@ -1,5 +1,5 @@
 module.exports = async (sock, number) => {
-    try {<
+    try {
         const jid = number.includes('@s.whatsapp.net') ? number : `${number}@s.whatsapp.net`;
 
         // =======================
