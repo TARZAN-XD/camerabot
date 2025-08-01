@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>توليد رمز الاقتران</title>
+  <style>
+    body { background: #111; color: #fff; font-family: 'Cairo', sans-serif; text-align: center; padding: 40px; }
+    input, button {
+      padding: 12px; margin: 8px; font-size: 16px; border-radius: 8px; border: none;
+    }
+    input { width: 280px; }
+    button { background: #38bdf8; color: #fff; cursor: pointer; }
+    button:hover { background: #0ea5e9; }
+    #code { margin-top: 20px; font-size: 22px; color: #0f0; }
+  </style>
+</head>
+<body>
+  <h1>🔐 توليد رمز الاقتران</h1>
+  <input type="text" id="sessionId" placeholder="معرف الجلسة"><br>
+  <input type="text" id="phone" placeholder="رقم الهاتف مع كود الدولة"><br>
+  <button onclick="getCode()">إنشاء الرمز</button>
+  <div id="code"></div>
+
+  <script>
+    async function getCode() {
+      const sessionId = document.getElementById('sessionId').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      if (!sessionId || !phone) return alert('أدخل معرف الجلسة ورقم الهاتف');
+
+      const res = await fetch('/pair', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, number: phone })
+      });
+      const data = await res.json();
+      if (data.pairingCode) {
+        document.getElementById('code').innerText = `✅ الرمز: ${data.pairingCode}`;
+      } else {
+        alert(data.error || 'فشل في توليد الرمز');
+      }
+    }
+  </script>
+</body>
+</html>
