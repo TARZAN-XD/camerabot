@@ -20,6 +20,9 @@ const bugCommand = require('./commands/bug');
 const crashCommand = require('./commands/crash');
 const protocolCommand = require('./commands/protocol1');
 
+// =============================
+// تشغيل بوت واتساب (كودك الأصلي تمامًا)
+// =============================
 async function startSock() {
     const { state, saveCreds } = await useMultiFileAuthState(SESSION_FOLDER);
 
@@ -54,7 +57,9 @@ async function startSock() {
 
 startSock();
 
-// عرض QR
+// =============================
+// API الـ QR (كودك الأصلي بدون تغيير)
+// =============================
 app.get('/qr', async (req, res) => {
     if (!qrCodeString) return res.status(404).send('لا يوجد QR حاليا');
     try {
@@ -65,7 +70,33 @@ app.get('/qr', async (req, res) => {
     }
 });
 
-// API للأوامر
+// =============================
+// 🔥🔥 إضافة Pair Code فقط — بدون تعديل الكود الأصلي 🔥🔥
+// =============================
+app.get('/pair-code', async (req, res) => {
+    const number = req.query.number;
+
+    if (!number) {
+        return res.status(400).send("❌ أدخل الرقم مثل: /pair-code?number=9677XXXXXXX");
+    }
+
+    try {
+        const code = await sock.requestPairingCode(number);
+        res.send(`
+            <center>
+                <h2>🔐 رمز الاقتران</h2>
+                <h1 style="letter-spacing:8px;font-size:32px;">${code}</h1>
+            </center>
+        `);
+    } catch (e) {
+        console.error(e);
+        return res.status(500).send("❌ فشل الحصول على رمز الاقتران");
+    }
+});
+
+// =============================
+// API الأوامر (كودك الأصلي بدون أي تغيير)
+// =============================
 app.post('/send-bug', async (req, res) => {
     const { number } = req.body;
     if (!number) return res.status(400).send('أدخل الرقم');
@@ -102,7 +133,9 @@ app.post('/send-protocol1', async (req, res) => {
     }
 });
 
-// واجهة بسيطة
+// =============================
+// الصفحة الرئيسية (كودك الأصلي)
+// =============================
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
