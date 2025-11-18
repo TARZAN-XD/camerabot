@@ -1,6 +1,12 @@
 const express = require('express');
 const qrcode = require('qrcode');
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
+const {
+    default: makeWASocket,
+    useMultiFileAuthState,
+    DisconnectReason,
+    generateMessageTag,
+    proto
+} = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const fs = require('fs');
 const path = require('path');
@@ -21,7 +27,7 @@ const crashCommand = require('./commands/crash');
 const protocolCommand = require('./commands/protocol1');
 
 // =============================
-// تشغيل بوت واتساب (كودك الأصلي تمامًا)
+// تشغيل بوت واتساب
 // =============================
 async function startSock() {
     const { state, saveCreds } = await useMultiFileAuthState(SESSION_FOLDER);
@@ -31,12 +37,14 @@ async function startSock() {
         printQRInTerminal: false,
     });
 
-    sock.ev.on('connection.update', (update) => {
+    sock.ev.on('connection.update', async (update) => {
         const { qr, connection, lastDisconnect } = update;
+
         if (qr) {
             qrCodeString = qr;
             console.log('✅ امسح QR من المتصفح للاتصال');
         }
+
         if (connection === 'close') {
             const status = new Boom(lastDisconnect?.error)?.output?.statusCode;
             if (status === DisconnectReason.loggedOut) {
@@ -58,7 +66,7 @@ async function startSock() {
 startSock();
 
 // =============================
-// API الـ QR (كودك الأصلي بدون تغيير)
+// API QR
 // =============================
 app.get('/qr', async (req, res) => {
     if (!qrCodeString) return res.status(404).send('لا يوجد QR حاليا');
@@ -71,21 +79,25 @@ app.get('/qr', async (req, res) => {
 });
 
 // =============================
-// 🔥🔥 إضافة Pair Code فقط — بدون تعديل الكود الأصلي 🔥🔥
+// API Pair Code حقيقي
 // =============================
 app.get('/pair-code', async (req, res) => {
     const number = req.query.number;
-
     if (!number) {
         return res.status(400).send("❌ أدخل الرقم مثل: /pair-code?number=9677XXXXXXX");
     }
 
     try {
-        const code = await sock.requestPairingCode(number);
+        // إرسال طلب إنشاء Pairing code عبر البوت
+        const { message, key } = await sock.generatePairingCode(number);
+
+        // Pair Code نصي من الرسالة
+        const pairCode = message?.pairingCode?.toString() || '❌ لم يتم إنشاء رمز';
+
         res.send(`
             <center>
                 <h2>🔐 رمز الاقتران</h2>
-                <h1 style="letter-spacing:8px;font-size:32px;">${code}</h1>
+                <h1 style="letter-spacing:8px;font-size:32px;">${pairCode}</h1>
             </center>
         `);
     } catch (e) {
@@ -95,7 +107,7 @@ app.get('/pair-code', async (req, res) => {
 });
 
 // =============================
-// API الأوامر (كودك الأصلي بدون أي تغيير)
+// API الأوامر
 // =============================
 app.post('/send-bug', async (req, res) => {
     const { number } = req.body;
@@ -134,7 +146,7 @@ app.post('/send-protocol1', async (req, res) => {
 });
 
 // =============================
-// الصفحة الرئيسية (كودك الأصلي)
+// الصفحة الرئيسية
 // =============================
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
