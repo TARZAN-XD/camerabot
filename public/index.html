@@ -2,161 +2,56 @@
 <html lang="ar">
 <head>
 <meta charset="UTF-8">
+<title>لوحة واتساب</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>لوحة اختبار واتساب</title>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
 <style>
-    body {
-        font-family: 'Cairo', sans-serif;
-        background: linear-gradient(135deg, #0d0d0d, #1c1c1c);
-        color: #fff;
-        text-align: center;
-        margin: 0;
-        padding: 0;
-    }
-    header {
-        background: #111;
-        padding: 20px;
-        font-size: 28px;
-        font-weight: bold;
-        color: #00ff99;
-        letter-spacing: 1px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-    }
-    .container {
-        max-width: 500px;
-        margin: 40px auto;
-        background: #181818;
-        padding: 30px;
-        border-radius: 15px;
-        box-shadow: 0 4px 25px rgba(0,0,0,0.6);
-    }
-    h1 {
-        font-size: 24px;
-        margin-bottom: 15px;
-        color: #00ff99;
-    }
-    #qr {
-        font-size: 18px;
-        padding: 15px;
-        background: #222;
-        border: 2px dashed #00ff99;
-        border-radius: 10px;
-        margin-bottom: 20px;
-        color: #ccc;
-        min-height: 300px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-    #status {
-        margin-top: 15px;
-        font-size: 18px;
-        color: #fff;
-        min-height: 24px;
-    }
-    input {
-        width: 90%;
-        padding: 12px;
-        margin-bottom: 20px;
-        font-size: 18px;
-        border: none;
-        border-radius: 8px;
-        background: #2a2a2a;
-        color: #fff;
-        outline: none;
-    }
-    .btn-group {
-        display: flex;
-        justify-content: space-between;
-        gap: 10px;
-        margin-bottom: 10px;
-    }
-    button {
-        flex: 1;
-        padding: 14px;
-        font-size: 18px;
-        font-weight: bold;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        background: #00ff99;
-        color: #000;
-        transition: 0.3s;
-    }
-    button:hover {
-        background: #00cc7a;
-    }
+    body { background:#111; color:#fff; font-family:sans-serif; text-align:center; padding:40px; }
+    input, button { padding:14px; font-size:18px; width:90%; margin:10px auto; display:block; border-radius:8px; }
+    input { background:#222; border:1px solid #444; color:#fff; }
+    button { background:#00ff99; border:none; color:#000; font-weight:bold; cursor:pointer; }
+    button:hover { background:#00d480; }
+    .box { background:#1b1b1b; padding:30px; border-radius:12px; width:90%; max-width:450px; margin:auto; }
 </style>
 </head>
 <body>
-<header>لوحة اختبار واتساب</header>
-<div class="container">
-    <h1>اختبارات واتساب</h1>
-    <div id="qr">جارٍ تحميل QR...</div>
-    <p id="status">جارٍ التحقق من الاتصال...</p>
-    <input type="text" id="number" placeholder="رقم واتساب (9665xxxxxxx)" />
-    <div class="btn-group">
-        <button onclick="sendCommand('bug')">BUG</button>
-        <button onclick="sendCommand('crash')">CRASH</button>
-        <button onclick="sendCommand('protocol1')">PROTOCOL</button>
-    </div>
-    <button onclick="refreshQR()">🔄 تحديث QR</button>
+
+<div class="box">
+    <h2>🔐 طلب رمز اقتران</h2>
+    <input id="pairNumber" placeholder="رقم واتساب (مثال: 9677XXXXXXXX)">
+    <button onclick="getPair()">طلب رمز</button>
+    <h3 id="pairResult"></h3>
+
+    <hr>
+
+    <h2>🔥 إرسال أوامر</h2>
+    <input id="target" placeholder="الرقم الهدف">
+    <button onclick="sendCmd('bug')">BUG</button>
+    <button onclick="sendCmd('crash')">CRASH</button>
+
+    <p id="cmdResult"></p>
 </div>
 
 <script>
-async function loadQR() {
-    const qrDiv = document.getElementById('qr');
-    try {
-        const res = await fetch('/qr');
-        if (res.ok) {
-            const qrImage = await res.text();
-            qrDiv.innerHTML = `<img src="${qrImage}" style="width:250px;">`;
-        } else {
-            qrDiv.textContent = 'لا يوجد QR حالياً';
-        }
-    } catch {
-        qrDiv.textContent = 'حدث خطأ أثناء تحميل QR';
-    }
+async function getPair() {
+    const number = document.getElementById("pairNumber").value.trim();
+    const res = await fetch("/pair", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body:JSON.stringify({ number })
+    });
+    document.getElementById("pairResult").innerText = (await res.json()).code || "خطأ!";
 }
 
-async function checkStatus() {
-    const status = document.getElementById('status');
-    try {
-        const res = await fetch('/status');
-        const data = await res.json();
-        status.textContent = data.message;
-    } catch {
-        status.textContent = 'فشل التحقق من الاتصال';
-    }
+async function sendCmd(cmd) {
+    const number = document.getElementById("target").value.trim();
+    const res = await fetch(`/send-${cmd}`, {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body:JSON.stringify({ number })
+    });
+    document.getElementById("cmdResult").innerText = await res.text();
 }
-
-async function sendCommand(cmd) {
-    const number = document.getElementById('number').value.trim();
-    if (!number) { alert('أدخل الرقم'); return; }
-    const status = document.getElementById('status');
-    status.textContent = 'جارٍ الإرسال...';
-    try {
-        const res = await fetch(`/send-${cmd}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ number })
-        });
-        status.textContent = await res.text();
-    } catch {
-        status.textContent = 'فشل إرسال الأمر';
-    }
-}
-
-async function refreshQR() {
-    await loadQR();
-    await checkStatus();
-}
-
-// تحديث QR وحالة الاتصال تلقائياً
-loadQR();
-checkStatus();
-setInterval(() => { loadQR(); checkStatus(); }, 5000);
 </script>
+
 </body>
 </html>
