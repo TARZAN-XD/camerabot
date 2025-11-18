@@ -3,9 +3,7 @@ const qrcode = require('qrcode');
 const {
     default: makeWASocket,
     useMultiFileAuthState,
-    DisconnectReason,
-    generateMessageTag,
-    proto
+    DisconnectReason
 } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const fs = require('fs');
@@ -17,6 +15,7 @@ const PORT = process.env.PORT || 3000;
 const SESSION_FOLDER = './auth_info_baileys';
 let sock;
 let qrCodeString = '';
+let connected = false;
 
 app.use(express.json());
 app.use(express.static('public'));
@@ -37,11 +36,12 @@ async function startSock() {
         printQRInTerminal: false,
     });
 
-    sock.ev.on('connection.update', async (update) => {
+    sock.ev.on('connection.update', (update) => {
         const { qr, connection, lastDisconnect } = update;
 
         if (qr) {
             qrCodeString = qr;
+            connected = false;
             console.log('✅ امسح QR من المتصفح للاتصال');
         }
 
@@ -50,13 +50,12 @@ async function startSock() {
             if (status === DisconnectReason.loggedOut) {
                 console.log('❌ تم تسجيل الخروج، حذف الجلسة');
                 fs.rmSync(SESSION_FOLDER, { recursive: true, force: true });
-                startSock();
-            } else {
-                console.log('🔄 إعادة الاتصال...');
-                startSock();
             }
+            console.log('🔄 إعادة الاتصال...');
+            startSock();
         } else if (connection === 'open') {
             console.log('✅ متصل الآن');
+            connected = true;
         }
     });
 
@@ -72,37 +71,20 @@ app.get('/qr', async (req, res) => {
     if (!qrCodeString) return res.status(404).send('لا يوجد QR حاليا');
     try {
         const qrImage = await qrcode.toDataURL(qrCodeString);
-        res.send(`<img src="${qrImage}" style="width:300px;"/>`);
+        res.send(qrImage);
     } catch {
         res.status(500).send('خطأ في إنشاء QR');
     }
 });
 
 // =============================
-// API Pair Code حقيقي
+// API حالة الاتصال
 // =============================
-app.get('/pair-code', async (req, res) => {
-    const number = req.query.number;
-    if (!number) {
-        return res.status(400).send("❌ أدخل الرقم مثل: /pair-code?number=9677XXXXXXX");
-    }
-
-    try {
-        // إرسال طلب إنشاء Pairing code عبر البوت
-        const { message, key } = await sock.generatePairingCode(number);
-
-        // Pair Code نصي من الرسالة
-        const pairCode = message?.pairingCode?.toString() || '❌ لم يتم إنشاء رمز';
-
-        res.send(`
-            <center>
-                <h2>🔐 رمز الاقتران</h2>
-                <h1 style="letter-spacing:8px;font-size:32px;">${pairCode}</h1>
-            </center>
-        `);
-    } catch (e) {
-        console.error(e);
-        return res.status(500).send("❌ فشل الحصول على رمز الاقتران");
+app.get('/status', (req, res) => {
+    if (connected) {
+        res.send({ connected: true, message: '✅ متصل الآن' });
+    } else {
+        res.send({ connected: false, message: '⌛ انتظر مسح QR' });
     }
 });
 
@@ -110,6 +92,7 @@ app.get('/pair-code', async (req, res) => {
 // API الأوامر
 // =============================
 app.post('/send-bug', async (req, res) => {
+    if (!connected) return res.status(400).send('❌ البوت غير متصل بعد مسح QR');
     const { number } = req.body;
     if (!number) return res.status(400).send('أدخل الرقم');
     try {
@@ -122,6 +105,7 @@ app.post('/send-bug', async (req, res) => {
 });
 
 app.post('/send-crash', async (req, res) => {
+    if (!connected) return res.status(400).send('❌ البوت غير متصل بعد مسح QR');
     const { number } = req.body;
     if (!number) return res.status(400).send('أدخل الرقم');
     try {
@@ -134,6 +118,7 @@ app.post('/send-crash', async (req, res) => {
 });
 
 app.post('/send-protocol1', async (req, res) => {
+    if (!connected) return res.status(400).send('❌ البوت غير متصل بعد مسح QR');
     const { number } = req.body;
     if (!number) return res.status(400).send('أدخل الرقم');
     try {
