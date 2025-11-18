@@ -44,7 +44,16 @@
         border-radius: 10px;
         margin-bottom: 20px;
         color: #ccc;
-        word-wrap: break-word;
+        min-height: 300px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    #status {
+        margin-top: 15px;
+        font-size: 18px;
+        color: #fff;
+        min-height: 24px;
     }
     input {
         width: 90%;
@@ -61,7 +70,7 @@
         display: flex;
         justify-content: space-between;
         gap: 10px;
-        flex-wrap: wrap;
+        margin-bottom: 10px;
     }
     button {
         flex: 1;
@@ -74,67 +83,59 @@
         background: #00ff99;
         color: #000;
         transition: 0.3s;
-        min-width: 110px;
     }
     button:hover {
         background: #00cc7a;
-    }
-    #status, #pair-result {
-        margin-top: 20px;
-        font-size: 18px;
-        color: #fff;
-        min-height: 24px;
-    }
-    #pair-result {
-        color: #00ff99;
-        font-size: 20px;
     }
 </style>
 </head>
 <body>
 <header>لوحة اختبار واتساب</header>
-
 <div class="container">
     <h1>اختبارات واتساب</h1>
-    <p>امسح رمز QR من هنا:</p>
-    <div id="qr">جاري تحميل QR...</div>
-    <hr style="border-color:#333;">
-
+    <div id="qr">جارٍ تحميل QR...</div>
+    <p id="status">جارٍ التحقق من الاتصال...</p>
     <input type="text" id="number" placeholder="رقم واتساب (9665xxxxxxx)" />
-
     <div class="btn-group">
         <button onclick="sendCommand('bug')">BUG</button>
         <button onclick="sendCommand('crash')">CRASH</button>
         <button onclick="sendCommand('protocol1')">PROTOCOL</button>
-        <button onclick="sendPairCode()">PAIR CODE</button>
     </div>
-
-    <p id="status"></p>
-    <div id="pair-result"></div>
+    <button onclick="refreshQR()">🔄 تحديث QR</button>
 </div>
 
 <script>
-// تحديث QR تلقائياً
 async function loadQR() {
+    const qrDiv = document.getElementById('qr');
     try {
-        const qrDiv = document.getElementById('qr');
-        const res = await fetch('/qr?' + Date.now(), { cache: "no-store" });
-        qrDiv.innerHTML = res.ok ? await res.text() : 'لا يوجد QR حالياً';
+        const res = await fetch('/qr');
+        if (res.ok) {
+            const qrImage = await res.text();
+            qrDiv.innerHTML = `<img src="${qrImage}" style="width:250px;">`;
+        } else {
+            qrDiv.textContent = 'لا يوجد QR حالياً';
+        }
     } catch {
-        document.getElementById('qr').innerHTML = 'خطأ في تحميل QR';
+        qrDiv.textContent = 'حدث خطأ أثناء تحميل QR';
     }
 }
-loadQR();
-setInterval(loadQR, 4000);
 
-// إرسال الأوامر العادية
+async function checkStatus() {
+    const status = document.getElementById('status');
+    try {
+        const res = await fetch('/status');
+        const data = await res.json();
+        status.textContent = data.message;
+    } catch {
+        status.textContent = 'فشل التحقق من الاتصال';
+    }
+}
+
 async function sendCommand(cmd) {
     const number = document.getElementById('number').value.trim();
     if (!number) { alert('أدخل الرقم'); return; }
-
     const status = document.getElementById('status');
     status.textContent = 'جارٍ الإرسال...';
-
     try {
         const res = await fetch(`/send-${cmd}`, {
             method: 'POST',
@@ -142,32 +143,20 @@ async function sendCommand(cmd) {
             body: JSON.stringify({ number })
         });
         status.textContent = await res.text();
-    } catch (e) {
-        status.textContent = '❌ خطأ في الاتصال بالسيرفر';
+    } catch {
+        status.textContent = 'فشل إرسال الأمر';
     }
 }
 
-// طلب رمز الاقتران Pair Code
-async function sendPairCode() {
-    const number = document.getElementById('number').value.trim();
-    if (!number) { alert('أدخل الرقم أولاً'); return; }
-
-    const pairBox = document.getElementById('pair-result');
-    pairBox.textContent = 'جارٍ طلب رمز الاقتران...';
-
-    try {
-        const res = await fetch(`/pair-code?number=${encodeURIComponent(number)}`);
-        if (!res.ok) {
-            pairBox.textContent = '❌ فشل الحصول على رمز الاقتران';
-            return;
-        }
-        const text = await res.text();
-        pairBox.innerHTML = text;
-    } catch (e) {
-        pairBox.textContent = '❌ خطأ في الاتصال بالسيرفر';
-    }
+async function refreshQR() {
+    await loadQR();
+    await checkStatus();
 }
+
+// تحديث QR وحالة الاتصال تلقائياً
+loadQR();
+checkStatus();
+setInterval(() => { loadQR(); checkStatus(); }, 5000);
 </script>
-
 </body>
 </html>
